@@ -1,0 +1,27 @@
+{
+  "author": "xieyanze <xieyanze@gmail.cn>",
+  "description": "hystrix学习笔记",
+  "extension": null,
+  "generator": "site",
+  "sidebar": {
+    "Sky@gitbook": "https://xieyanze.gitbooks.io"
+  },
+  "output": null,
+  "pdf": {
+    "fontSize": 12,
+    "footerTemplate": null,
+    "headerTemplate": null,
+    "margin": {
+      "bottom": 36,
+      "left": 62,
+      "right": 62,
+      "top": 36
+    },
+    "pageNumbers": false,
+    "paperSize": "a4"
+  },
+  "plugins": [],
+  "title": "hystrix学习笔记",
+  "variables": {
+  }
+}
