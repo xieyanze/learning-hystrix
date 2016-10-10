@@ -1,7 +1,7 @@
 bui# Summary
 
 * [首页](index.md)
-* [开始](started.md)
+* [快速开始](started.md)
 * [如何工作](work.md)
 * [如何使用](use.md)
 * [操作](operations.md)
