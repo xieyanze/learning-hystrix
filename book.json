@@ -20,7 +20,15 @@
     "pageNumbers": false,
     "paperSize": "a4"
   },
-  "plugins": [],
+  "plugins": [
+    "toc"
+	],
+  "pluginsConfig": {
+    "toc": {
+        "addClass": true,
+        "className": "toc"
+    }
+  }
   "title": "hystrix学习笔记",
   "variables": {
   }
