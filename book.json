@@ -21,7 +21,8 @@
     "paperSize": "a4"
   },
   "plugins": [
-    "toc"
+    "toc",
+    "sectionx"
 	],
   "pluginsConfig": {
     "toc": {

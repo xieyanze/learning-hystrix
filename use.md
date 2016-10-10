@@ -1,6 +1,11 @@
+## 内容
+<!-- toc -->
+
 ## 添加依赖包
 
 maven项目pom文件添加一下内容：
+
+
 
 ```xml
 <dependency>
@@ -84,7 +89,7 @@ Observable<String> s = new CommandHelloWorld("Bob").observe();
 
 示例源码可以在[hystrix-examples](https://github.com/Netflix/Hystrix/tree/master/hystrix-examples/src/main/java/com/netflix/hystrix/examples)模块找到。
 
-### 构建
+## 构建
 
 检出源码并且构建
 
