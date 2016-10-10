@@ -1,62 +1,8 @@
-## 内容
+### 内容
 <!-- toc -->
 
-## 添加依赖包
-
-maven项目pom文件添加一下内容：
-
-
-
-```xml
-<dependency>
-    <groupId>com.netflix.hystrix</groupId>
-    <artifactId>hystrix-core</artifactId>
-    <version>1.5.6</version>
-</dependency>
-```
-
-> 2016年10月10日为止最新版本为1.5.6
-
-lvy添加：
-
-```xml
-<dependency org="com.netflix.hystrix" name="hystrix-core" rev="1.5.6" />
-```
-
-如果你需要下载jar而不是使用构建系统，创建一个所需版本的maven pom文件，例如：
-
-```xml
-<?xml version="1.0"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
-    <groupId>com.netflix.hystrix.download</groupId>
-    <artifactId>hystrix-download</artifactId>
-    <version>1.0-SNAPSHOT</version>
-    <name>Simple POM to download hystrix-core and dependencies</name>
-    <url>http://github.com/Netflix/Hystrix</url>
-    <dependencies>
-        <dependency>
-            <groupId>com.netflix.hystrix</groupId>
-            <artifactId>hystrix-core</artifactId>
-            <version>1.5.6</version>
-            <scope/>
-        </dependency>
-    </dependencies>
-</project>
-```
-
-执行：
-
-```shell
-mvn -f download-hystrix-pom.xml dependency:copy-dependencies
-```
-
-上述命令会将hystrix-core-1.5.6.jar 和它的依赖包一起下载到./target/dependency/. 目录，执行上述命令需要java 6以上。
-
-## Hello World!
-
-Hystrix的最简单的用法如下：
-
+## "Hello World!"
+下面是 [***HystrixCommand***](http://netflix.github.io/Hystrix/javadoc/index.html?com/netflix/hystrix/HystrixCommand.html) 的一个基本的“Hello World”实现：
 ```java
 public class CommandHelloWorld extends HystrixCommand<String> {
 
@@ -75,76 +21,82 @@ public class CommandHelloWorld extends HystrixCommand<String> {
 }
 ```
 
-[查看源码](https://github.com/Netflix/Hystrix/blob/master/hystrix-examples/src/main/java/com/netflix/hystrix/examples/basic/CommandHelloWorld.java)
+[查看代码](https://github.com/Netflix/Hystrix/blob/master/hystrix-examples/src/main/java/com/netflix/hystrix/examples/basic/CommandHelloWorld.java)
 
-这个命令可以这样使用：
+#### HystrixObservableCommand Equivalent
+
+使用 [***HystrixObservableCommand***](http://netflix.github.io/Hystrix/javadoc/index.html?com/netflix/hystrix/HystrixObservableCommand.html) 而不是 ***HystrixCommand*** 的等效Hello World解决方案将涉及覆盖构造方法，如下所示：
 
 ```java
-String s = new CommandHelloWorld("Bob").execute();
-Future<String> s = new CommandHelloWorld("Bob").queue();
-Observable<String> s = new CommandHelloWorld("Bob").observe();
+public class CommandHelloWorld extends HystrixObservableCommand<String> {
+
+    private final String name;
+
+    public CommandHelloWorld(String name) {
+        super(HystrixCommandGroupKey.Factory.asKey("ExampleGroup"));
+        this.name = name;
+    }
+
+    @Override
+    protected Observable<String> construct() {
+        return Observable.create(new Observable.OnSubscribe<String>() {
+            @Override
+            public void call(Subscriber<? super String> observer) {
+                try {
+                    if (!observer.isUnsubscribed()) {
+                        // a real example would do work like a network call here
+                        observer.onNext("Hello");
+                        observer.onNext(name + "!");
+                        observer.onCompleted();
+                    }
+                } catch (Exception e) {
+                    observer.onError(e);
+                }
+            }
+         } );
+    }
+}
 ```
 
-更多的例子和信息可以在[如何使用](use.md)章节找到。
+## 同步执行
 
-示例源码可以在[hystrix-examples](https://github.com/Netflix/Hystrix/tree/master/hystrix-examples/src/main/java/com/netflix/hystrix/examples)模块找到。
+你可以使用***execute()***方法同步执行一个***HystrixCommand***，如以下示例所示：
 
-## 构建
-
-检出源码并且构建
-
-```shell
-$ git clone git@github.com:Netflix/Hystrix.git
-$ cd Hystrix/
-$ ./gradlew build
+```java
+String s = new CommandHelloWorld("World").execute();
 ```
 
-做一个干净的构建：
+这种形式的执行通过以下测试：
 
-```shell
-$ ./gradlew clean build
+```java
+@Test
+public void testSynchronous() {
+    assertEquals("Hello World!", new CommandHelloWorld("World").execute());
+    assertEquals("Hello Bob!", new CommandHelloWorld("Bob").execute());
+}
 ```
 
-在构建过程中你可以看到类似这样的信息：
-```console
-$ ./gradlew build
-:hystrix-core:compileJava
-:hystrix-core:processResources UP-TO-DATE
-:hystrix-core:classes
-:hystrix-core:jar
-:hystrix-core:sourcesJar
-:hystrix-core:signArchives SKIPPED
-:hystrix-core:assemble
-:hystrix-core:licenseMain UP-TO-DATE
-:hystrix-core:licenseTest UP-TO-DATE
-:hystrix-core:compileTestJava
-:hystrix-core:processTestResources UP-TO-DATE
-:hystrix-core:testClasses
-:hystrix-core:test
-:hystrix-core:check
-:hystrix-core:build
-:hystrix-examples:compileJava
-:hystrix-examples:processResources UP-TO-DATE
-:hystrix-examples:classes
-:hystrix-examples:jar
-:hystrix-examples:sourcesJar
-:hystrix-examples:signArchives SKIPPED
-:hystrix-examples:assemble
-:hystrix-examples:licenseMain UP-TO-DATE
-:hystrix-examples:licenseTest UP-TO-DATE
-:hystrix-examples:compileTestJava
-:hystrix-examples:processTestResources UP-TO-DATE
-:hystrix-examples:testClasses
-:hystrix-examples:test
-:hystrix-examples:check
-:hystrix-examples:build
+### HystrixObservableCommand
+对于 ***HystrixObservableCommand*** 没有简单的等价执行，但是如果你知道这样的命令产生的 ***Observable*** 总是只产生一个值，你可以通过应用 ***.toBlocking().toFuture().get()*** 来模拟execute的行为 通知到 ***Observable***。
 
-BUILD SUCCESSFUL
-
-Total time: 30.758 secs
-```
-
-在一个干净的构建过程中你将看到单元测试运行，看到类似的信息：
-```shell
-> Building > :hystrix-core:test > 147 tests completed
-```
+## 异步执行
+## 响应式执行
+## 响应式命令
+## 回退
+## 错误传播
+## 命令名称
+## 命令分组
+## 命令线程池
+## 请求缓存
+## 请求折叠
+## 请求上下文设置
+## 常见模式
+### 快速失败
+### 失败静默
+### 回退：静态
+### 回退：stubbed
+### 回退：网络缓存
+### 主备回退
+### 客户端不执行网络访问
+### 使用无效请求缓存的Get-Set-Get
+### 迁移
