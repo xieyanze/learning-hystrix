@@ -370,14 +370,263 @@ public class CommandUsingRequestCache extends HystrixCommand<Boolean> {
     }
 }
 ```
-## 请求折叠
+
+[查看代码](https://github.com/Netflix/Hystrix/blob/master/hystrix-examples/src/main/java/com/netflix/hystrix/examples/basic/CommandUsingRequestCache.java)
+
+因为这取决于请求上下文，我们必须初始化 ***HystrixRequestContext***。
+在简单的单元测试中，你可以这样做：
+
+```java
+@Test
+public void testWithoutCacheHits() {
+    HystrixRequestContext context = HystrixRequestContext.initializeContext();
+    try {
+        assertTrue(new CommandUsingRequestCache(2).execute());
+        assertFalse(new CommandUsingRequestCache(1).execute());
+        assertTrue(new CommandUsingRequestCache(0).execute());
+        assertTrue(new CommandUsingRequestCache(58672).execute());
+    } finally {
+        context.shutdown();
+    }
+}
+```
+
+通常，此上下文将通过包装用户请求或其他生命周期钩子的Servlet过滤器进行初始化和关闭。
+以下是一个示例，显示命令如何在请求上下文中从缓存中检索其值（以及如何查询对象以了解其值是否来自缓存）：
+
+```java
+@Test
+public void testWithCacheHits() {
+    HystrixRequestContext context = HystrixRequestContext.initializeContext();
+    try {
+        CommandUsingRequestCache command2a = new CommandUsingRequestCache(2);
+        CommandUsingRequestCache command2b = new CommandUsingRequestCache(2);
+
+        assertTrue(command2a.execute());
+        // this is the first time we've executed this command with
+        // the value of "2" so it should not be from cache
+        assertFalse(command2a.isResponseFromCache());
+
+        assertTrue(command2b.execute());
+        // this is the second time we've executed this command with
+        // the same value so it should return from cache
+        assertTrue(command2b.isResponseFromCache());
+    } finally {
+        context.shutdown();
+    }
+
+    // start a new request context
+    context = HystrixRequestContext.initializeContext();
+    try {
+        CommandUsingRequestCache command3b = new CommandUsingRequestCache(2);
+        assertTrue(command3b.execute());
+        // this is a new request context so this 
+        // should not come from cache
+        assertFalse(command3b.isResponseFromCache());
+    } finally {
+        context.shutdown();
+    }
+}
+```
+
+## [Request Collapsing](https://github.com/Netflix/Hystrix/wiki/How-To-Use#request-collapsing)
+
 ## 请求上下文设置
+要使用 reuest-scoped 的功能（请求缓存，Request Collapsing，请求日志），您必须管理 [HystrixRequestContext](http://netflix.github.io/Hystrix/javadoc/index.html?com/netflix/hystrix/strategy/concurrency/HystrixRequestContext.html) 生命周期（或实现替代[HystrixConcurrencyStrategy](http://netflix.github.io/Hystrix/javadoc/index.html?com/netflix/hystrix/strategy/concurrency/HystrixConcurrencyStrategy.html)）。
+
+这意味着您必须在请求之前执行以下操作：
+
+```java
+HystrixRequestContext context = HystrixRequestContext.initializeContext();
+```
+
+然后在这个请求结束时：
+
+```java
+context.shutdown();
+```
+
+在标准的Java Web应用程序中，可以使用Servlet Filter通过实现类似于以下的过滤器来初始化此生命周期：
+```java
+public class HystrixRequestContextServletFilter implements Filter {
+
+    public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) 
+     throws IOException, ServletException {
+        HystrixRequestContext context = HystrixRequestContext.initializeContext();
+        try {
+            chain.doFilter(request, response);
+        } finally {
+            context.shutdown();
+        }
+    }
+}
+```
+您可以通过向web.xml中添加一个请求过滤器，如下所示：
+
+```xml
+<filter>
+  <display-name>HystrixRequestContextServletFilter</display-name>
+  <filter-name>HystrixRequestContextServletFilter</filter-name>
+  <filter-class>com.netflix.hystrix.contrib.requestservlet.HystrixRequestContextServletFilter</filter-class>
+</filter>
+<filter-mapping>
+  <filter-name>HystrixRequestContextServletFilter</filter-name>
+  <url-pattern>/*</url-pattern>
+</filter-mapping>
+```
+
 ## 常见模式
-### 快速失败
-### 失败静默
-### 回退：静态
-### 回退：stubbed
-### 回退：网络缓存
+下部分是 ***HystrixCommand*** 和 ***HystrixObservableCommand*** 的常见用法和模式。
+### 快速失败(Fail Fast)
+最基本的执行是一个单一的事情，没有fallback行为。 如果发生任何类型的故障，它将抛出异常。
+
+```java
+public class CommandThatFailsFast extends HystrixCommand<String> {
+
+    private final boolean throwException;
+
+    public CommandThatFailsFast(boolean throwException) {
+        super(HystrixCommandGroupKey.Factory.asKey("ExampleGroup"));
+        this.throwException = throwException;
+    }
+
+    @Override
+    protected String run() {
+        if (throwException) {
+            throw new RuntimeException("failure from CommandThatFailsFast");
+        } else {
+            return "success";
+        }
+    }
+}
+```
+
+[查看代码](https://github.com/Netflix/Hystrix/blob/master/hystrix-examples/src/main/java/com/netflix/hystrix/examples/basic/CommandThatFailsFast.java)
+
+这些单元测试显示它的行为：
+
+```java
+@Test
+public void testSuccess() {
+    assertEquals("success", new CommandThatFailsFast(false).execute());
+}
+
+@Test
+public void testFailure() {
+    try {
+        new CommandThatFailsFast(true).execute();
+        fail("we should have thrown an exception");
+    } catch (HystrixRuntimeException e) {
+        assertEquals("failure from CommandThatFailsFast", e.getCause().getMessage());
+        e.printStackTrace();
+    }
+}
+```
+
+***HystrixObservableCommand*** 的等效Fail-Fast解决方案将覆盖 ***resumeWithFallback（）*** 方法，如下所示：
+
+```java
+@Override
+    protected Observable<String> resumeWithFallback() {
+        if (throwException) {
+            return Observable.error(new Throwable("failure from CommandThatFailsFast"));
+        } else {
+            return Observable.just("success");
+        }
+    }
+```
+### 失败静默(Fail Silent)
+失败意味着相当于返回空响应或删除功能。 它可以通过返回null，空的Map，空列表或其他这样的响应来完成。
+
+你可以通过在***HystrixCommand***实例上实现一个 ***getFallback()*** 方法来实现：
+![](https://github.com/Netflix/Hystrix/wiki/images/fallback-640.png)
+
+```java
+public class CommandThatFailsSilently extends HystrixCommand<String> {
+
+    private final boolean throwException;
+
+    public CommandThatFailsSilently(boolean throwException) {
+        super(HystrixCommandGroupKey.Factory.asKey("ExampleGroup"));
+        this.throwException = throwException;
+    }
+
+    @Override
+    protected String run() {
+        if (throwException) {
+            throw new RuntimeException("failure from CommandThatFailsFast");
+        } else {
+            return "success";
+        }
+    }
+
+    @Override
+    protected String getFallback() {
+        return null;
+    }
+}
+```
+
+[查看源码](https://github.com/Netflix/Hystrix/blob/master/hystrix-examples/src/main/java/com/netflix/hystrix/examples/basic/CommandThatFailsSilently.java)
+
+```java
+@Test
+public void testSuccess() {
+    assertEquals("success", new CommandThatFailsSilently(false).execute());
+}
+
+@Test
+public void testFailure() {
+    try {
+        assertEquals(null, new CommandThatFailsSilently(true).execute());
+    } catch (HystrixRuntimeException e) {
+        fail("we should not get an exception as we fail silently with a fallback");
+    }
+}
+```
+
+另一个返回空列表的实现将如下所示：
+
+```java
+@Override
+protected List<String> getFallback() {
+    return Collections.emptyList();
+}
+```
+
+***HystrixObservableCommand*** 的等效的Fail-Silently 解决方案将涉及覆盖 ***resumeWithFallback()*** 方法，如下所示：
+
+```java
+@Override
+protected Observable<String> resumeWithFallback() {
+    return Observable.empty();
+}
+```
+
+### fallback：static
+Fallback可以返回静态嵌入在代码中的默认值。这不会导致功能或服务以“失败沉默”通常的方式删除，而会导致发生默认行为。
+
+例如，如果命令基于用户凭据返回true / false，但命令执行失败，则可以默认为true：
+
+```java
+@Override
+protected Boolean getFallback() {
+    return true;
+}
+```
+
+***HystrixObservableCommand***的等效静态解决方案将覆盖 ***resumeWithFallback*** 方法，如下所示：
+
+```java
+@Override
+protected Observable<Boolean> resumeWithFallback() {
+    return Observable.just( true );
+}
+```
+### [fallback：stubbed](https://github.com/Netflix/Hystrix/wiki/How-To-Use#fallback-stubbed)
+
+### fallback：网络缓存
+有时，如果后端服务失败，可以从诸如memcached的缓存服务检索过时的数据版本。
 ### 主备回退
 ### 客户端不执行网络访问
 ### 使用无效请求缓存的Get-Set-Get
