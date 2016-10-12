@@ -1,7 +1,7 @@
 * [快速开始](started.md)
 * [如何使用](use.md)
 * [如何工作](work.md)
-* [操作](operations.md)
+* [应用](operations.md)
 * [配置项](configuration.md)
 * [指标](metrics.md)
 * [插件](plugins.md)
