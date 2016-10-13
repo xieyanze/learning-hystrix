@@ -952,3 +952,13 @@ public void getGetSetGet() {
 }
 ```
 ### 迁移
+
+当您将现有客户端库迁移到使用Hystrix时，应该使用 ***HystrixCommadn*** 替换每个“服务方法”。
+
+然后，服务方法应该将调用转发到 ***HystrixCommand*** ，而不在其中包含任何附加的业务逻辑。
+
+因此，在迁移之前，服务库可能如下所示：
+![Without Hystrix](https://github.com/Netflix/Hystrix/wiki/images/library-migration-to-hystrix-without-640.png)
+
+迁移后，库的用户将能够通过委派给 ***HystrixCommand*** 的服务外观直接或间接访问 ***HystrixCommand***。
+![Migrated](https://github.com/Netflix/Hystrix/wiki/images/library-migration-to-hystrix-with-640.png)
