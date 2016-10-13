@@ -627,7 +627,328 @@ protected Observable<Boolean> resumeWithFallback() {
 
 ### fallback：网络缓存
 有时，如果后端服务失败，可以从诸如memcached的缓存服务检索过时的数据版本。
-### 主备回退
+
+由于fallbcak调用的是另一个网络上可能失败的点，所以它也需要一个 ***hystrixcommand*** 或 ***hystrixobservablecommand*** 包裹。
+![fallback:cache via network](https://github.com/Netflix/Hystrix/wiki/images/fallback-via-command-640.png)
+
+下面的代码演示了 ***CommandWithFallbackViaNetowrk *** 如何在 ***getFallback()*** 方法中执行 ***FallbackViaNetWork***
+
+注意如果fallback失败，它也有一个fallback，它做“fail silent”的方法返回null。
+
+要配置 ***FallbackViaNetwork*** 命令在与从 ***HystrixCommandGroupKey*** 派生的默认 ***RemoteServiceX***不同的线程池上运行，它会将HystrixThreadPoolKey.Factory.asKey（“RemoteServiceXFallback”）注入构造函数。
+
+这意味着 ***CommandWithFallbackViaNetwork*** 将在名为 ***RemoteServiceX*** 的线程池上运行，并且 ***FallbackViaNetwork*** 将在线程池名称上运行RemoteServiceXFallback。
+
+```java
+public class CommandWithFallbackViaNetwork extends HystrixCommand<String> {
+    private final int id;
+
+    protected CommandWithFallbackViaNetwork(int id) {
+        super(Setter.withGroupKey(HystrixCommandGroupKey.Factory.asKey("RemoteServiceX"))
+                .andCommandKey(HystrixCommandKey.Factory.asKey("GetValueCommand")));
+        this.id = id;
+    }
+
+    @Override
+    protected String run() {
+        //        RemoteServiceXClient.getValue(id);
+        throw new RuntimeException("force failure for example");
+    }
+
+    @Override
+    protected String getFallback() {
+        return new FallbackViaNetwork(id).execute();
+    }
+
+    private static class FallbackViaNetwork extends HystrixCommand<String> {
+        private final int id;
+
+        public FallbackViaNetwork(int id) {
+            super(Setter.withGroupKey(HystrixCommandGroupKey.Factory.asKey("RemoteServiceX"))
+                    .andCommandKey(HystrixCommandKey.Factory.asKey("GetValueFallbackCommand"))
+                    // use a different threadpool for the fallback command
+                    // so saturating the RemoteServiceX pool won't prevent
+                    // fallbacks from executing
+                    .andThreadPoolKey(HystrixThreadPoolKey.Factory.asKey("RemoteServiceXFallback")));
+            this.id = id;
+        }
+
+        @Override
+        protected String run() {
+            MemCacheClient.getValue(id);
+        }
+
+        @Override
+        protected String getFallback() {
+            // the fallback also failed
+            // so this fallback-of-a-fallback will 
+            // fail silently and return null
+            return null;
+        }
+    }
+}
+```
+
+[查看代码](https://github.com/Netflix/Hystrix/blob/master/hystrix-examples/src/main/java/com/netflix/hystrix/examples/basic/CommandWithFallbackViaNetwork.java)
+
+### 主备Fallback
+
+某些系统具有双模式行为 - 主要和次要，或主要和故障转移。
+
+有时次要或故障转移被认为是故障状态，它仅用于fallback; 在这些情况下，它将适合与上述“通过网络缓存”相同的模式。
+
+然而，如果跳转到辅助系统是常见的，例如推出新代码的正常部分（有时这是有状态系统处理代码推送的一部分），则每次使用辅助系统时，主节点将处于故障状态 ，脱扣断路器和点火警报。
+
+这不是所期望的行为，如果没有其他原因，当一个真正的问题发生，将导致警报被忽略，为了避免“狼来了”的情况发生。
+
+因此，在这种情况下，战略反而是将初级和次级之间的转换视为正常，健康的模式，并在其前面放置一个外观模式
+
+![Primary+secondary](https://github.com/Netflix/Hystrix/wiki/images/primary-secondary-example-640.png)
+
+主要和次要 ***HystrixCommand*** 实现是线程隔离的，因为它们正在做网络流量和业务逻辑。 它们可以具有非常不同的性能特性（通常次级系统是静态高速缓存），因此每个的单独命令的另一个好处是它们可以被单独调谐。
+
+您不公开这两个命令，而是将它们隐藏在信号量隔离的另一个 ***HystrixCommand*** 之后，并实现关于是调用主命令还是辅助命令的条件逻辑。 如果主失败和辅助失败，则控制切换到外观命令本身的回退。
+
+外观模式 ***HystrixCommand*** 可以使用信号量隔离，因为它正在进行的所有工作都通过已经线程隔离的另外两个 ***HystrixCommand*** 。 只要外观的 [run()](http://netflix.github.io/Hystrix/javadoc/com/netflix/hystrix/HystrixCommand.html#run()) 方法不执行任何其他网络调用，重试逻辑或其他“容易出错”的事情，就不必再有一层线程
+
+```java
+public class CommandFacadeWithPrimarySecondary extends HystrixCommand<String> {
+
+    private final static DynamicBooleanProperty usePrimary = DynamicPropertyFactory.getInstance().getBooleanProperty("primarySecondary.usePrimary", true);
+
+    private final int id;
+
+    public CommandFacadeWithPrimarySecondary(int id) {
+        super(Setter
+                .withGroupKey(HystrixCommandGroupKey.Factory.asKey("SystemX"))
+                .andCommandKey(HystrixCommandKey.Factory.asKey("PrimarySecondaryCommand"))
+                .andCommandPropertiesDefaults(
+                        // we want to default to semaphore-isolation since this wraps
+                        // 2 others commands that are already thread isolated
+                        HystrixCommandProperties.Setter()
+                                .withExecutionIsolationStrategy(ExecutionIsolationStrategy.SEMAPHORE)));
+        this.id = id;
+    }
+
+    @Override
+    protected String run() {
+        if (usePrimary.get()) {
+            return new PrimaryCommand(id).execute();
+        } else {
+            return new SecondaryCommand(id).execute();
+        }
+    }
+
+    @Override
+    protected String getFallback() {
+        return "static-fallback-" + id;
+    }
+
+    @Override
+    protected String getCacheKey() {
+        return String.valueOf(id);
+    }
+
+    private static class PrimaryCommand extends HystrixCommand<String> {
+
+        private final int id;
+
+        private PrimaryCommand(int id) {
+            super(Setter
+                    .withGroupKey(HystrixCommandGroupKey.Factory.asKey("SystemX"))
+                    .andCommandKey(HystrixCommandKey.Factory.asKey("PrimaryCommand"))
+                    .andThreadPoolKey(HystrixThreadPoolKey.Factory.asKey("PrimaryCommand"))
+                    .andCommandPropertiesDefaults(
+                            // we default to a 600ms timeout for primary
+                            HystrixCommandProperties.Setter().withExecutionTimeoutInMilliseconds(600)));
+            this.id = id;
+        }
+
+        @Override
+        protected String run() {
+            // perform expensive 'primary' service call
+            return "responseFromPrimary-" + id;
+        }
+
+    }
+
+    private static class SecondaryCommand extends HystrixCommand<String> {
+
+        private final int id;
+
+        private SecondaryCommand(int id) {
+            super(Setter
+                    .withGroupKey(HystrixCommandGroupKey.Factory.asKey("SystemX"))
+                    .andCommandKey(HystrixCommandKey.Factory.asKey("SecondaryCommand"))
+                    .andThreadPoolKey(HystrixThreadPoolKey.Factory.asKey("SecondaryCommand"))
+                    .andCommandPropertiesDefaults(
+                            // we default to a 100ms timeout for secondary
+                            HystrixCommandProperties.Setter().withExecutionTimeoutInMilliseconds(100)));
+            this.id = id;
+        }
+
+        @Override
+        protected String run() {
+            // perform fast 'secondary' service call
+            return "responseFromSecondary-" + id;
+        }
+
+    }
+
+    public static class UnitTest {
+
+        @Test
+        public void testPrimary() {
+            HystrixRequestContext context = HystrixRequestContext.initializeContext();
+            try {
+                ConfigurationManager.getConfigInstance().setProperty("primarySecondary.usePrimary", true);
+                assertEquals("responseFromPrimary-20", new CommandFacadeWithPrimarySecondary(20).execute());
+            } finally {
+                context.shutdown();
+                ConfigurationManager.getConfigInstance().clear();
+            }
+        }
+
+        @Test
+        public void testSecondary() {
+            HystrixRequestContext context = HystrixRequestContext.initializeContext();
+            try {
+                ConfigurationManager.getConfigInstance().setProperty("primarySecondary.usePrimary", false);
+                assertEquals("responseFromSecondary-20", new CommandFacadeWithPrimarySecondary(20).execute());
+            } finally {
+                context.shutdown();
+                ConfigurationManager.getConfigInstance().clear();
+            }
+        }
+    }
+}
+```
+
+[查看代码](https://github.com/Netflix/Hystrix/blob/master/hystrix-examples/src/main/java/com/netflix/hystrix/examples/basic/CommandFacadeWithPrimarySecondary.java)
+
 ### 客户端不执行网络访问
-### 使用无效请求缓存的Get-Set-Get
+
+当您执行不执行网络访问的行为，但关注延迟或线程开销是不可接受的，您可以将 ***executionIsolationStrategy*** 属性设置为***ExecutionIsolationStrategy.SEMAPHORE*** ，Hystrix将使用信号量隔离。
+
+下面显示了如何通过代码将此属性设置为命令的默认值（您也可以在运行时通过动态属性覆盖它）。
+
+```java
+public class CommandUsingSemaphoreIsolation extends HystrixCommand<String> {
+
+    private final int id;
+
+    public CommandUsingSemaphoreIsolation(int id) {
+        super(Setter.withGroupKey(HystrixCommandGroupKey.Factory.asKey("ExampleGroup"))
+                // since we're doing an in-memory cache lookup we choose SEMAPHORE isolation
+                .andCommandPropertiesDefaults(HystrixCommandProperties.Setter()
+                        .withExecutionIsolationStrategy(ExecutionIsolationStrategy.SEMAPHORE)));
+        this.id = id;
+    }
+
+    @Override
+    protected String run() {
+        // a real implementation would retrieve data from in memory data structure
+        return "ValueFromHashMap_" + id;
+    }
+
+}
+```
+[查看代码](https://github.com/Netflix/Hystrix/blob/master/hystrix-examples/src/main/java/com/netflix/hystrix/examples/basic/CommandUsingSemaphoreIsolation.java)
+
+### 使请求缓存无效的Get-Set-Get
+
+如果您正在实施一个Get-Set-Get用例，其中Get接收到足够的流量，请求缓存是需要的，但有时一个Set发生在另一个应该使同一请求中的缓存失效的命令，您可以通过调用 [HystrixRequestCache.clear()](http://netflix.github.io/Hystrix/javadoc/com/netflix/hystrix/HystrixRequestCache.html#clear(java.lang.String))。
+
+这里是一个示例实现：
+
+```java
+public class CommandUsingRequestCacheInvalidation {
+
+    /* represents a remote data store */
+    private static volatile String prefixStoredOnRemoteDataStore = "ValueBeforeSet_";
+
+    public static class GetterCommand extends HystrixCommand<String> {
+
+        private static final HystrixCommandKey GETTER_KEY = HystrixCommandKey.Factory.asKey("GetterCommand");
+        private final int id;
+
+        public GetterCommand(int id) {
+            super(Setter.withGroupKey(HystrixCommandGroupKey.Factory.asKey("GetSetGet"))
+                    .andCommandKey(GETTER_KEY));
+            this.id = id;
+        }
+
+        @Override
+        protected String run() {
+            return prefixStoredOnRemoteDataStore + id;
+        }
+
+        @Override
+        protected String getCacheKey() {
+            return String.valueOf(id);
+        }
+
+        /**
+         * Allow the cache to be flushed for this object.
+         * 
+         * @param id
+         *            argument that would normally be passed to the command
+         */
+        public static void flushCache(int id) {
+            HystrixRequestCache.getInstance(GETTER_KEY,
+                    HystrixConcurrencyStrategyDefault.getInstance()).clear(String.valueOf(id));
+        }
+
+    }
+
+    public static class SetterCommand extends HystrixCommand<Void> {
+
+        private final int id;
+        private final String prefix;
+
+        public SetterCommand(int id, String prefix) {
+            super(HystrixCommandGroupKey.Factory.asKey("GetSetGet"));
+            this.id = id;
+            this.prefix = prefix;
+        }
+
+        @Override
+        protected Void run() {
+            // persist the value against the datastore
+            prefixStoredOnRemoteDataStore = prefix;
+            // flush the cache
+            GetterCommand.flushCache(id);
+            // no return value
+            return null;
+        }
+    }
+}
+```
+
+[查看代码](https://github.com/Netflix/Hystrix/blob/master/hystrix-examples/src/main/java/com/netflix/hystrix/examples/basic/CommandUsingRequestCacheInvalidation.java)
+
+确认行为的单元测试是：
+
+```java
+@Test
+public void getGetSetGet() {
+    HystrixRequestContext context = HystrixRequestContext.initializeContext();
+    try {
+        assertEquals("ValueBeforeSet_1", new GetterCommand(1).execute());
+        GetterCommand commandAgainstCache = new GetterCommand(1);
+        assertEquals("ValueBeforeSet_1", commandAgainstCache.execute());
+        // confirm it executed against cache the second time
+        assertTrue(commandAgainstCache.isResponseFromCache());
+        // set the new value
+        new SetterCommand(1, "ValueAfterSet_").execute();
+        // fetch it again
+        GetterCommand commandAfterSet = new GetterCommand(1);
+        // the getter should return with the new prefix, not the value from cache
+        assertFalse(commandAfterSet.isResponseFromCache());
+        assertEquals("ValueAfterSet_1", commandAfterSet.execute());
+    } finally {
+        context.shutdown();
+    }
+}
+```
 ### 迁移

@@ -1,0 +1,3 @@
+[Migration Guide](https://github.com/Netflix/Hystrix/wiki/Migration-Guide)
+===
+翻译中...

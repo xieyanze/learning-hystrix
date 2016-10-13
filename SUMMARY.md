@@ -8,4 +8,5 @@
 * [仪表盘](dashboard.md)
 * [示例](examples.md)
 * [迁移向导](migrationGuide.md)
-* [FAQ](faq.md)
+* [FAQ:General](faq.md)
+* [FAQ:Operational](faq-operational.md)

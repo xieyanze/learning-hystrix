@@ -1,0 +1,3 @@
+[FAQ:Operational](https://github.com/Netflix/Hystrix/wiki/FAQ%20:%20Operational)
+===
+翻译中....
