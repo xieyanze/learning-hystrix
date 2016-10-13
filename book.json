@@ -31,7 +31,7 @@
   "pluginsConfig": {
     "donate": {
       "wechat": "https://xieyanze.gitbooks.io/hystrix-document/content/images/wechat.jpg",
-      "alipay": "https://xieyanze.gitbooks.io/hystrix-document/content/images/alipay.png",
+      "alipay": "https://xieyanze.gitbooks.io/hystrix-document/content/images/alipay.jpg",
       "title": "",
       "button": "赏",
       "alipayText": "支付宝打赏",
