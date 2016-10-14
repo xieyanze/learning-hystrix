@@ -58,7 +58,7 @@ public HystrixCommandInstance(int id) {
 ## 命令的属性
 [查看原文表格](https://github.com/Netflix/Hystrix/wiki/Configuration#command-properties)
 
-### Execution
+### Execution（执行器）
 
 以下属性控制 *HystrixCommand.run()* 如何执行
 
@@ -178,7 +178,7 @@ Since: 1.2
 实例属性	| hystrix.command.HystrixCommandKey.fallback.enabled
 用法		 | HystrixCommandProperties.Setter().withFallbackEnabled(boolean value)
 
-### Circuit Breaker
+### Circuit Breaker(熔断器)
 
 断路器特性控制 [HystrixCircuitBreaker](http://netflix.github.io/Hystrix/javadoc/index.html?com/netflix/hystrix/HystrixCircuitBreaker.html) 的行为。
 
@@ -245,3 +245,138 @@ circuitBreaker.forceClosed
 默认属性	| hystrix.command.default.circuitBreaker.forceClosed
 实例属性	| hystrix.command.HystrixCommandKey.circuitBreaker.forceClosed
 用法		 | HystrixCommandProperties.Setter().withCircuitBreakerForceClosed(boolean value)
+
+### Metrics(度量)
+
+以下属性与从 *Hystrix Command* 和 *HystrixObservableCommand* 执行捕获指标有关。
+
+#### metrics.rollingStats.timeInMilliseconds
+
+此属性设置统计滚动窗口的持续时间（以毫秒为单位）。 这是Hystrix保持熔断器使用和发布的指标时间。
+
+从1.4.12开始，此属性仅影响初始度量标准创建，并且在启动后对此属性所做的调整将不会生效。 这避免了度量标准数据丢失，并允许优化度量标准收集。
+
+窗口被分成桶和“滚动”这些增量。
+
+例如，如果此属性设置为10秒（10000），其中包含十个1秒钟桶，则下图说明了如何滚动新桶和旧桶：
+
+![rolling-stats-640.png](images/rolling-stats-640.png)
+
+默认值 	 | 10000
+---	  	   |:--
+默认属性	|hystrix.command.default.metrics.rollingStats.timeInMilliseconds
+实例属性	|hystrix.command.HystrixCommandKey.metrics.rollingStats.timeInMilliseconds
+用法		 |HystrixCommandProperties.Setter().withMetricsRollingStatisticalWindowInMilliseconds(int value)
+
+#### metrics.rollingStats.numBuckets
+
+此属性设置滚动统计窗口划分的桶数
+
+**注意** 以下必须为true -- ”metrics.rollingStats.timeInMilliseconds % metrics.rollingStats.numBuckets == 0“ --否则将抛出异常。
+
+换句话说，10000/10是可以的，所以可以是10000/20，但10000/7不行。
+
+从1.4.12开始，此属性仅影响初始度量标准创建，并且在启动后对此属性所做的调整将不会生效。 这避免了度量标准数据丢失，并允许优化度量标准收集。
+
+默认值 	 | 10
+---	  	   |:--
+可选值|metrics.rollingStats.timeInMilliseconds的任何值均可。 然而，结果应该是测量数百或数千毫秒的桶。 高容量下的性能未使用桶小于100ms测试。
+默认属性	|hystrix.command.default.metrics.rollingStats.numBuckets
+实例属性	|hystrix.command.HystrixCommandKey.metrics.rollingStats.numBuckets
+用法		 |HystrixCommandProperties.Setter().withMetricsRollingStatisticalWindowBuckets(int value)
+
+#### metrics.rollingPercentile.enabled
+
+此属性指示是否应将跟踪和计算执行延迟作为百分位数。 如果禁用它们，则所有摘要统计信息（平均值，百分位数）都将返回-1。
+
+默认值 	 | true
+---	  	   |:--
+默认属性	|hystrix.command.default.metrics.rollingPercentile.enabled
+实例属性	|hystrix.command.HystrixCommandKey.metrics.rollingPercentile.enabled
+用法		 |HystrixCommandProperties.Setter().withMetricsRollingPercentileEnabled(boolean value)
+
+#### metrics.rollingPercentile.timeInMilliseconds
+
+此属性设置滚动窗口的持续时间，其中保留执行时间以允许百分位数计算，以毫秒为单位。窗口被分成桶和“卷”这些增量。
+
+从1.4.12开始，此属性仅影响初始度量标准创建，并且在启动后对此属性所做的调整将不会生效。 这避免了度量标准数据丢失，并允许优化度量标准收集。
+
+默认值 	 | 60000
+---	  	   |:--
+默认属性	|hystrix.command.default.metrics.rollingPercentile.timeInMilliseconds
+实例属性	|hystrix.command.HystrixCommandKey.metrics.rollingPercentile.timeInMilliseconds
+用法		 |HystrixCommandProperties.Setter().withMetricsRollingPercentileWindowInMilliseconds(int value)
+
+#### metrics.rollingPercentile.numBuckets
+
+此属性设置滚动百分位窗口将划分的桶的数量。
+
+注意：以下内容必须为true - “metrics.rolling Percentile.time In Milliseconds％metrics.rolling Percentile.numBuckets == 0” - 否则将抛出异常。
+
+从1.4.12开始，此属性仅影响初始度量标准创建，并且在启动后对此属性所做的调整将不会生效。 这避免了度量标准数据丢失，并允许优化度量标准收集。
+
+默认值 	 | 6
+---	  	   |:--
+可选值 | metrics.rollingPercentile.timeInMilliseconds的任何值均可做除数。 然而，结果应该是桶测量数千毫秒。 大容量的性能尚未使用桶小于1000ms进行测试。
+默认属性	|hystrix.command.default.metrics.rollingPercentile.numBuckets
+实例属性	|hystrix.command.HystrixCommandKey.metrics.rollingPercentile.numBuckets
+用法		 |HystrixCommandProperties.Setter().withMetricsRollingPercentileWindowBuckets(int value)
+
+#### metrics.rollingPercentile.bucketSize
+
+此属性设置每个存储桶保留的最大执行次数。 更多的执行发生在它们将围绕并在桶的开始处开始重写的时间期间。
+
+例如，如果桶大小设置为100并且表示10秒的桶窗口，但在该时间期间发生500次执行，则在该10秒钟桶中将仅保留最后100次执行。
+
+如果增加此大小，这还会增加存储值所需的内存量，并增加对列表进行排序以执行百分位数计算所需的时间。
+
+从1.4.12开始，此属性仅影响初始度量标准创建，并且在启动后对此属性所做的调整将不会生效。 这避免了度量标准数据丢失，并允许优化度量标准收集。
+
+默认值 	 | 100
+---	  	   |:--
+默认属性	|hystrix.command.default.metrics.rollingPercentile.bucketSize
+实例属性	|hystrix.command.HystrixCommandKey.metrics.rollingPercentile.bucketSize
+用法		 |HystrixCommandProperties.Setter().withMetricsRollingPercentileBucketSize(int value)
+
+#### metrics.healthSnapshot.intervalInMilliseconds
+
+此属性设置在允许计算成功和错误百分比并影响断路器状态的健康快照之间等待的时间（以毫秒为单位）。
+
+在高容量调用链路上，错误百分比的连续计算可能变得CPU密集，因此此属性允许您控制计算的频率。
+
+默认值 	 | 500
+---	  	   |:--
+默认属性	|hystrix.command.default.metrics.healthSnapshot.intervalInMilliseconds
+实例属性	|hystrix.command.HystrixCommandKey.metrics.healthSnapshot.intervalInMilliseconds
+用法		 |HystrixCommandProperties.Setter().withMetricsHealthSnapshotIntervalInMilliseconds(int value)
+
+### Request Context
+
+这些属性涉及 *HystrixCommand* 使用的 [HystrixRequestContext](http://netflix.github.com/Hystrix/javadoc/index.html?com/netflix/hystrix/strategy/concurrency/HystrixRequestContext.html) 功能
+
+#### requestCache.enabled
+
+此属性指示 [HystrixCommand.getCacheKey()](http://netflix.github.io/Hystrix/javadoc/com/netflix/hystrix/HystrixCommand.html#getCacheKey()) 是否应与 [HystrixRequstCache](http://netflix.github.io/Hystrix/javadoc/index.html?com/netflix/hystrix/HystrixRequestCache.html) 一起使用，以通过请求范围的缓存提供重复数据缓存功能。
+
+默认值 	 | true
+---	  	   |:--
+默认属性	|hystrix.command.default.requestCache.enabled
+实例属性	|hystrix.command.HystrixCommandKey.requestCache.enabled
+用法		 |HystrixCommandProperties.Setter().withRequestCacheEnabled(boolean value)
+
+#### requestLog.enabled
+此属性指示 *HystrixCommand* 和事件是否应记录到 [HystrixRequestLog](http://netflix.github.io/Hystrix/javadoc/index.html?com/netflix/hystrix/HystrixRequestLog.html)
+
+默认值 	 | true
+---	  	   |:--
+默认属性	|hystrix.command.default.requestLog.enabled
+实例属性	|hystrix.command.HystrixCommandKey.requestLog.enabled
+用法		 |HystrixCommandProperties.Setter().withRequestLogEnabled(boolean value)
+
+### Collapser Properties
+
+以下属性控制 *HystrixCollapser* 行为。
+
+#### maxRequestsInBatch
+
+此属性设置在触发批处理执行之前批处理中允许的最大请求数。
