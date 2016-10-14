@@ -81,7 +81,7 @@ public HystrixCommandInstance(int id) {
 ![isolation-options-1280.png](images/isolation-options-640.png)
 
 有关此决策的更多信息，请参阅隔离的[工作原理](https://github.com/Netflix/Hystrix/wiki/How-it-Works#isolation)。
-<table style="margin-top:-500px;width:100%">
+<table style="width:100%">
 	<tr>
         <th>默认值</th>
         <td>THREAD</td>
@@ -115,7 +115,7 @@ public HystrixCommandInstance(int id) {
 
 **注意：**即使调用者从未在结果Future上调用get()，超时将在HystrixCommand.queue()上触发。 在Hystrix 1.4.0之前，只有调用get()触发超时机制在这种情况下生效。
 
-<table style="margin-top:-400px;width:100%">
+<table style="width:100%">
 	<tr>
         <th>默认值</th>
         <td>1000</td>
@@ -138,7 +138,7 @@ public HystrixCommandInstance(int id) {
 
 此属性指示 ***HystrixCommand.run()*** 执行是否应该有超时。
 
-<table style="margin-top:-400px;width:100%">
+<table style="width:100%">
 	<tr>
         <th>默认值</th>
         <td>true</td>
@@ -161,7 +161,7 @@ public HystrixCommandInstance(int id) {
 
 此属性指示在发生超时时是否应中断 ***HystrixCommand.run()*** 执行。
 
-<table style="margin-top:-400px;width:100%">
+<table style="width:100%">
 	<tr>
         <th>默认值</th>
         <td>true</td>
@@ -184,7 +184,7 @@ public HystrixCommandInstance(int id) {
 
 此属性指示当发生取消时，***HystrixCommand.run()*** 执行是否应该中断。
 
-<table style="margin-top:-400px;width:100%">
+<table style="width:100%">
 	<tr>
         <th>默认值</th>
         <td>false</td>
@@ -215,7 +215,7 @@ public HystrixCommandInstance(int id) {
 
 隔离原理仍然是相同的，所以信号量应当仍然是整个容器（即Tomcat）线程池的小百分比，而不是它的全部或大部分，否则它不提供保护。
 
-<table style="margin-top:-400px;width:100%">
+<table style="width:100%">
 	<tr>
         <th>默认值</th>
         <td>10</td>
