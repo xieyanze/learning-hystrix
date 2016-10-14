@@ -60,7 +60,7 @@ public HystrixCommandInstance(int id) {
 
 ### Execution
 
-以下属性控制 ***HystrixCommand.run()*** 如何执行
+以下属性控制 *HystrixCommand.run()* 如何执行
 
 #### execution.isolation.strategy
 
@@ -91,7 +91,7 @@ public HystrixCommandInstance(int id) {
 
 #### execution.isolation.thread.timeoutInMilliseconds
 
-此属性设置以毫秒为单位的时间，在此之后，调用者将观察到超时并离开命令执行。 Hystrix将 ***HystrixCommand*** 标记为TIMEOUT，并执行回退逻辑。 注意，如果需要，可以关闭每个命令的超时（参见command.timeout.enabled）。
+此属性设置以毫秒为单位的时间，在此之后，调用者将观察到超时并离开命令执行。 Hystrix将 *HystrixCommand* 标记为TIMEOUT，并执行回退逻辑。 注意，如果需要，可以关闭每个命令的超时（参见command.timeout.enabled）。
 
 **注意：**即使调用者从未在结果Future上调用get()，超时将在HystrixCommand.queue()上触发。 在Hystrix 1.4.0之前，只有调用get()触发超时机制在这种情况下生效。
 
@@ -103,7 +103,7 @@ public HystrixCommandInstance(int id) {
 
 #### execution.timeout.enabled
 
-此属性指示 ***HystrixCommand.run()*** 执行是否应该有超时。
+此属性指示 *HystrixCommand.run()* 执行是否应该有超时。
 
 默认值 	 | true
 ---	  	   |:--
@@ -113,7 +113,7 @@ public HystrixCommandInstance(int id) {
 
 #### execution.isolation.thread.interruptOnTimeout
 
-此属性指示在发生超时时是否应中断 ***HystrixCommand.run()*** 执行。
+此属性指示在发生超时时是否应中断 *HystrixCommand.run()* 执行。
 
 默认值 	 | true
 ---	  	   |:--
@@ -123,7 +123,7 @@ public HystrixCommandInstance(int id) {
 
 #### execution.isolation.thread.interruptOnCancel
 
-此属性指示当发生取消时，***HystrixCommand.run()*** 执行是否应该中断。
+此属性指示当发生取消时，*HystrixCommand.run()* 执行是否应该中断。
 
 默认值 	 | false
 ---	  	   |:--
@@ -150,3 +150,98 @@ public HystrixCommandInstance(int id) {
 用法		 | HystrixCommandProperties.Setter().withExecutionIsolationSemaphoreMaxConcurrentRequests(int value)
 
 ### Fallback
+
+以下属性控制 *HystrixCommand.getFallback()* 如何执行。 这些属性适用于 *ExecutionIsolationStrategy.THREAD* 和 *Execution Isolation Strategy.SEMAPHORE* 。
+
+#### fallback.isolation.semaphore.maxConcurrentRequests
+
+此属性设置 *HystrixCommand.Fallback()* 方法允许从调用线程发出的请求的最大数量。
+
+如果命中最大并发限制，则后续请求将被拒绝，并且由于没有回退，可以检索到异常。
+>注意：这意味着如果请求线程数如果大于配置值（默认10），将直接fallback，**生产环境中注意调整此值的大小**
+
+默认值 	 | 10
+---	  	   |:--
+默认属性	| hystrix.command.default.fallback.isolation.semaphore.maxConcurrentRequests
+实例属性	| hystrix.command.HystrixCommandKey.fallback.isolation.semaphore.maxConcurrentRequests
+用法		 | HystrixCommandProperties.Setter().withFallbackIsolationSemaphoreMaxConcurrentRequests(int value)
+
+#### fallback.enabled
+
+Since: 1.2
+
+此属性确定在发生失败或拒绝时是否尝试调用 *HystrixCommand.Fallback()*。
+
+默认值 	 | true
+---	  	   |:--
+默认属性	| hystrix.command.default.fallback.enabled
+实例属性	| hystrix.command.HystrixCommandKey.fallback.enabled
+用法		 | HystrixCommandProperties.Setter().withFallbackEnabled(boolean value)
+
+### Circuit Breaker
+
+断路器特性控制 [HystrixCircuitBreaker](http://netflix.github.io/Hystrix/javadoc/index.html?com/netflix/hystrix/HystrixCircuitBreaker.html) 的行为。
+
+#### circuitBreaker.enabled
+
+此属性确定断路器是否将用于跟踪运行状况和短路请求（如果熔断）。
+
+默认值 	 | true
+---	  	   |:--
+默认属性	| hystrix.command.default.circuitBreaker.enabled
+实例属性	| hystrix.command.HystrixCommandKey.circuitBreaker.enabled
+用法		 | HystrixCommandProperties.Setter().withCircuitBreakerEnabled(boolean value)
+
+#### circuitBreaker.requestVolumeThreshold
+
+此属性在滚动窗口中设置将跳过请求链路的最小请求数。
+
+例如，如果值为20，则如果在滚动窗口（例如10秒的窗口）中仅接收到19个请求，则即使所有19个请求失败，电路也不会熔断。
+
+>备注：断路器熔断的最小值阀值，如果单位时间内请求小于这个值，断路器永远不会熔断。
+
+#### circuitBreaker.sleepWindowInMilliseconds
+
+此属性设置在调用链路熔断之后，在允许再次尝试确定调用链路是否应闭合之前拒绝请求的时间量。
+
+>备注：可以理解为，调用链路熔断后，一定时间后(默认5秒)，将再次重试调用run()方法，检测是否需要闭合调用链路。实际多线程测试的过程中，只有一个线程会尝试闭合链路，如果仍旧符合熔断条件（比如默认值，响应时间大于1秒），则继续熔断。其他线程一直处于熔断状态，这种设计比较节省调用者的资源，没有必要所有线程都去尝试闭合。
+
+默认值 	 | 5000
+---	  	   |:--
+默认属性	| hystrix.command.default.circuitBreaker.sleepWindowInMilliseconds
+实例属性	| hystrix.command.HystrixCommandKey.circuitBreaker.sleepWindowInMilliseconds
+用法		 | HystrixCommandProperties.Setter().withCircuitBreakerSleepWindowInMilliseconds(int value)
+
+#### circuitBreaker.errorThresholdPercentage
+
+此属性设置错误百分比，在该值或以上时调用链路应熔断，并开始短路请求到fallback逻辑。
+
+>错误数达到或超过配置值时，执行熔断操作，调用fallback.注意此百分比是值在一定时间范围内（默认10秒，见metrics.rollingStats.timeInMilliseconds）
+
+默认值 	 | 50
+---	  	   |:--
+默认属性	| hystrix.command.default.circuitBreaker.errorThresholdPercentage
+实例属性	| hystrix.command.HystrixCommandKey.circuitBreaker.errorThresholdPercentage
+用法		 | HystrixCommandProperties.Setter().withCircuitBreakerErrorThresholdPercentage(int value)
+
+#### circuitBreaker.forceOpen
+
+该属性，如果为true，强制断路器进入打开（熔断）状态，其中它将拒绝所有请求。此属性优先 *circuitBreaker.forceClosed*。
+
+默认值 	 | false
+---	  	   |:--
+默认属性	| hystrix.command.default.circuitBreaker.forceOpen
+实例属性	| hystrix.command.HystrixCommandKey.circuitBreaker.forceOpen
+用法		 | HystrixCommandProperties.Setter().withCircuitBreakerForceOpen(boolean value)
+
+circuitBreaker.forceClosed
+
+该属性如果为true，则迫使断路器进入闭合状态，其中它将允许所有请求通过，而不考虑误差百分比。
+
+*circuitBreaker.force* 打开属性优先，如果设置为true，此属性不执行任何操作。
+
+默认值 	 | false
+---	  	   |:--
+默认属性	| hystrix.command.default.circuitBreaker.forceClosed
+实例属性	| hystrix.command.HystrixCommandKey.circuitBreaker.forceClosed
+用法		 | HystrixCommandProperties.Setter().withCircuitBreakerForceClosed(boolean value)
