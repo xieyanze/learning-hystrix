@@ -81,33 +81,13 @@ public HystrixCommandInstance(int id) {
 ![isolation-options-1280.png](images/isolation-options-640.png)
 
 有关此决策的更多信息，请参阅隔离的[工作原理](https://github.com/Netflix/Hystrix/wiki/How-it-Works#isolation)。
-<table style="width:100%">
-	<tr>
-        <th>默认值</th>
-        <td>THREAD</td>
-    </tr>
-    <tr>
-        <th>可选值</th>
-        <td>THREAD, SEMAPHORE</td>
-    </tr>
-    <tr>
-        <th>默认属性</th>
-        <td>hystrix.command.default.execution.isolation.strategy</td>
-    </tr>
-    <tr>
-        <th>实例属性</th>
-        <td>hystrix.command.HystrixCommandKey.execution.isolation.strategy</td>
-    </tr>
-        <tr>
-        <th>用法</th>
-        <td>	// to use thread isolation
-                HystrixCommandProperties.Setter()
-                   .withExecutionIsolationStrategy(ExecutionIsolationStrategy.THREAD)
-                // to use semaphore isolation
-                HystrixCommandProperties.Setter()
-                   .withExecutionIsolationStrategy(ExecutionIsolationStrategy.SEMAPHORE)</td>
-    </tr>
-</table>
+默认值 	 | THREAD
+---	  	   |:--
+可选值 	 | THREAD, SEMAPHORE
+默认属性	| hystrix.command.default.execution.isolation.strategy
+实例属性	| hystrix.command.HystrixCommandKey.execution.isolation.strategy
+用法		 | HystrixCommandProperties.Setter().withExecutionIsolationStrategy(ExecutionIsolationStrategy.THREAD)
+		  | HystrixCommandProperties.Setter().withExecutionIsolationStrategy(ExecutionIsolationStrategy.SEMAPHORE)
 
 #### execution.isolation.thread.timeoutInMilliseconds
 
@@ -115,93 +95,41 @@ public HystrixCommandInstance(int id) {
 
 **注意：**即使调用者从未在结果Future上调用get()，超时将在HystrixCommand.queue()上触发。 在Hystrix 1.4.0之前，只有调用get()触发超时机制在这种情况下生效。
 
-<table style="width:100%">
-	<tr>
-        <th>默认值</th>
-        <td>1000</td>
-    </tr>
-    <tr>
-        <th>默认属性</th>
-        <td>hystrix.command.default.execution.isolation.thread.timeoutInMilliseconds</td>
-    </tr>
-    <tr>
-        <th>实例属性</th>
-        <td>hystrix.command.HystrixCommandKey.execution.isolation.thread.timeoutInMilliseconds</td>
-    </tr>
-        <tr>
-        <th>用法</th>
-        <td>HystrixCommandProperties.Setter().withExecutionTimeoutInMilliseconds(int value)</td>
-    </tr>
-</table>
+默认值 	 | 1000
+---	  	   |:--
+默认属性	| hystrix.command.default.execution.isolation.thread.timeoutInMilliseconds
+实例属性	| hystrix.command.HystrixCommandKey.execution.isolation.thread.timeoutInMilliseconds
+用法		 | HystrixCommandProperties.Setter().withExecutionTimeoutInMilliseconds(int value)
 
 #### execution.timeout.enabled
 
 此属性指示 ***HystrixCommand.run()*** 执行是否应该有超时。
 
-<table style="width:100%">
-	<tr>
-        <th>默认值</th>
-        <td>true</td>
-    </tr>
-    <tr>
-        <th>默认属性</th>
-        <td>hystrix.command.default.execution.timeout.enabled</td>
-    </tr>
-    <tr>
-        <th>实例属性</th>
-        <td>hystrix.command.HystrixCommandKey.execution.timeout.enabled</td>
-    </tr>
-        <tr>
-        <th>用法</th>
-        <td>HystrixCommandProperties.Setter().withExecutionTimeoutEnabled(boolean value)</td>
-    </tr>
-</table>
+默认值 	 | true
+---	  	   |:--
+默认属性	| hystrix.command.default.execution.timeout.enabled
+实例属性	| hystrix.command.HystrixCommandKey.execution.timeout.enabled
+用法		 | HystrixCommandProperties.Setter().withExecutionTimeoutEnabled(boolean value)
 
 #### execution.isolation.thread.interruptOnTimeout
 
 此属性指示在发生超时时是否应中断 ***HystrixCommand.run()*** 执行。
 
-<table style="width:100%">
-	<tr>
-        <th>默认值</th>
-        <td>true</td>
-    </tr>
-    <tr>
-        <th>默认属性</th>
-        <td>hystrix.command.default.execution.isolation.thread.interruptOnTimeout</td>
-    </tr>
-    <tr>
-        <th>实例属性</th>
-        <td>hystrix.command.HystrixCommandKey.execution.isolation.thread.interruptOnTimeout</td>
-    </tr>
-        <tr>
-        <th>用法</th>
-        <td>HystrixCommandProperties.Setter().withExecutionIsolationThreadInterruptOnTimeout(boolean value)</td>
-    </tr>
-</table>
+默认值 	 | true
+---	  	   |:--
+默认属性	| hystrix.command.default.execution.isolation.thread.interruptOnTimeout
+实例属性	| hystrix.command.HystrixCommandKey.execution.isolation.thread.interruptOnTimeout
+用法		 | HystrixCommandProperties.Setter().withExecutionIsolationThreadInterruptOnTimeout(boolean value)
 
 #### execution.isolation.thread.interruptOnCancel
 
 此属性指示当发生取消时，***HystrixCommand.run()*** 执行是否应该中断。
 
-<table style="width:100%">
-	<tr>
-        <th>默认值</th>
-        <td>false</td>
-    </tr>
-    <tr>
-        <th>默认属性</th>
-        <td>hystrix.command.default.execution.isolation.thread.interruptOnCancel</td>
-    </tr>
-    <tr>
-        <th>实例属性</th>
-        <td>hystrix.command.HystrixCommandKey.execution.isolation.thread.interruptOnCancel</td>
-    </tr>
-        <tr>
-        <th>用法</th>
-        <td>HystrixCommandProperties.Setter().withExecutionIsolationThreadInterruptOnCancel(boolean value)</td>
-    </tr>
-</table>
+默认值 	 | false
+---	  	   |:--
+默认属性	| hystrix.command.default.execution.isolation.thread.interruptOnCancel
+实例属性	| hystrix.command.HystrixCommandKey.execution.isolation.thread.interruptOnCancel
+用法		 | HystrixCommandProperties.Setter().withExecutionIsolationThreadInterruptOnCancel(boolean value)
 
 #### execution.isolation.semaphore.maxConcurrentRequests
 
@@ -215,23 +143,10 @@ public HystrixCommandInstance(int id) {
 
 隔离原理仍然是相同的，所以信号量应当仍然是整个容器（即Tomcat）线程池的小百分比，而不是它的全部或大部分，否则它不提供保护。
 
-<table style="width:100%">
-	<tr>
-        <th>默认值</th>
-        <td>10</td>
-    </tr>
-    <tr>
-        <th>默认属性</th>
-        <td>hystrix.command.default.execution.isolation.semaphore.maxConcurrentRequests</td>
-    </tr>
-    <tr>
-        <th>实例属性</th>
-        <td>hystrix.command.HystrixCommandKey.execution.isolation.semaphore.maxConcurrentRequests</td>
-    </tr>
-        <tr>
-        <th>用法</th>
-        <td>HystrixCommandProperties.Setter().withExecutionIsolationSemaphoreMaxConcurrentRequests(int value)</td>
-    </tr>
-</table>
+默认值 	 | 10
+---	  	   |:--
+默认属性	| hystrix.command.default.execution.isolation.semaphore.maxConcurrentRequests
+实例属性	| hystrix.command.HystrixCommandKey.execution.isolation.semaphore.maxConcurrentRequests
+用法		 | HystrixCommandProperties.Setter().withExecutionIsolationSemaphoreMaxConcurrentRequests(int value)
 
 ### Fallback
