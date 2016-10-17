@@ -26,7 +26,8 @@
     "splitter",
     "toc",
     "emphasize",
-    "tbfed-pagefooter"
+    "tbfed-pagefooter",
+    "baidu"
 	],
   "pluginsConfig": {
     "donate": {
@@ -45,7 +46,8 @@
       "copyright":"Copyright &copy www.gitbook.com/@xieyanze 2016",
       "modify_label": "该文件修订时间：",
       "modify_format": "YYYY-MM-DD HH:mm:ss"
-    }
+    },
+      "baidu":{"token":"031cf24c03f53abf8779d85dd1a9718f"}
   },
   "title": "hystrix学习笔记",
   "variables": {
