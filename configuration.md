@@ -1,4 +1,4 @@
-[Configuration](https://github.com/Netflix/Hystrix/wiki/Configuration)
+Configuration](https://github.com/Netflix/Hystrix/wiki/Configuration)
 ===
 ## 内容
 <!-- toc -->
@@ -380,3 +380,137 @@ circuitBreaker.forceClosed
 #### maxRequestsInBatch
 
 此属性设置在触发批处理执行之前批处理中允许的最大请求数。
+
+默认值 	 | Integer.MAX_VALUE
+---	  	   |:--
+默认属性	|hystrix.collapser.default.maxRequestsInBatch
+实例属性	|hystrix.collapser.HystrixCollapserKey.maxRequestsInBatch
+用法		 |HystrixCollapserProperties.Setter().withMaxRequestsInBatch(int value)
+
+#### timerDelayInMilliseconds
+
+此属性设置创建批处理后触发其执行的毫秒数。
+
+默认值 	 | 10
+---	  	   |:--
+默认属性	|hystrix.collapser.default.timerDelayInMilliseconds
+实例属性	|hystrix.collapser.HystrixCollapserKey.timerDelayInMilliseconds
+用法		 |HystrixCollapserProperties.Setter().withTimerDelayInMilliseconds(int value)
+
+#### requestCache.enabled
+
+此属性指示是否为 [Hystrix Collapser.execute()](http://netflix.github.io/Hystrix/javadoc/com/netflix/hystrix/HystrixCollapser.html#execute())和[Hystrix Collapser.queue](http://netflix.github.io/Hystrix/javadoc/com/netflix/hystrix/HystrixCollapser.html#queue())调用启用请求高速缓存。
+
+默认值 	 | true
+---	  	   |:--
+默认属性	|hystrix.collapser.default.requestCache.enabled
+实例属性	|hystrix.collapser.HystrixCollapserKey.requestCache.enabled
+用法		 |HystrixCollapserProperties.Setter().withRequestCacheEnabled(boolean value)
+
+
+### ThreadPool Properties
+
+以下属性控制Hystrix命令在其上执行的线程池的行为。大多数时候，默认值为10的线程会很好（通常可以做得更小）。
+
+要确定是否需要更大，计算大小的基本公式为：
+请求每秒在峰值时健康×99th百分位延迟（秒）+ 冗余值
+
+参见下面的例子，看看这个公式是如何付诸实践的。
+
+一般原则是保持池尽可能小，因为它是缓解负载的主要工具，并防止资源在延迟发生时被阻塞。
+
+![thread-configuration-640.png](images/thread-configuration-640.png)
+
+上图显示了一个示例配置，其中依赖关系没有理由命中99.5百分位，因此它在网络超时层将其缩短，并立即重试，期望它将在大多数时间获得中等延迟，并且能够在300ms线程超时内完成这一切。
+
+如果依赖有合法的理由有时达到99.5百分位数（例如缓存未命中延迟生成），那么网络超时将被设置为高于它，例如在325ms，0或1次重试，线程超时设置更高（350ms + ）。
+
+线程池的大小为10，以处理第99百分位数请求的突发，但是当一切正常时，此线程池通常只有1或2个线程在任何给定时间处于活动状态，以服务大约40ms的中间调用。
+
+当您正确配置HystrixCommand层的超时应该是罕见的，但保护是在那里，除了网络延迟影响时间，或连接+读+重试+连接+读的组合在最坏的情况下仍然超过配置的总体超时。
+
+每个方向上的配置的积极性和权衡对于每个依赖性是不同的。
+
+您可以随着性能特征更改或发现问题，根据需要实时更改配置，如果出现问题或配置错误，则无需删除整个应用程序。
+
+#### coreSize
+
+此属性设置核心线程池大小。 这是可以同时执行的Hystrix命令的最大数量。
+
+
+默认值 	 | 10
+---	  	   |:--
+默认属性	|hystrix.threadpool.default.coreSize
+实例属性	|hystrix.threadpool.HystrixThreadPoolKey.coreSize
+用法		 |HystrixThreadPoolProperties.Setter().withCoreSize(int value)
+
+#### maxQueueSize
+
+此属性设置BlockingQueue实现的最大队列大小。
+
+如果将此值设置为-1，那么将使用同步队列( [SynchronousQueue](http://docs.oracle.com/javase/6/docs/api/java/util/concurrent/SynchronousQueue.html) )，否则将使用 [LinkedBlockingQueue](http://docs.oracle.com/javase/6/docs/api/java/util/concurrent/LinkedBlockingQueue.html)的正值。
+
+**注意：**此属性仅在初始化时适用，因为队列实现不能重新调整大小或更改，而不重新初始化不支持的线程执行程序。
+
+如果需要克服此限制并允许队列中的动态更改，请参阅队列大小拒绝阈值属性
+
+要在SynchronousQueue和LinkedBlockingQueue之间切换，需要重新启动。
+
+默认值 	 | -1
+---	  	   |:--
+默认属性	|hystrix.threadpool.default.maxQueueSize
+实例属性	|hystrix.threadpool.HystrixThreadPoolKey.maxQueueSize
+用法		 |HystrixThreadPoolProperties.Setter().withMaxQueueSize(int value)
+
+#### queueSizeRejectionThreshold
+
+此属性设置队列大小拒绝阈值 - 即使未达到maxQueueSize也将发生拒绝的人为最大队列大小。 此属性存在，因为[BlockingQueue](http://docs.oracle.com/javase/6/docs/api/java/util/concurrent/BlockingQueue.html)的 *maxQueueSize* 不能动态更改，我们希望允许您动态更改影响拒绝的队列大小。
+
+这是HystrixCommand在对线程执行排队时使用的。
+
+**注意：**如果maxQueueSize == -1，则此属性不适用。
+
+默认值 	 | 5
+---	  	   |:--
+默认属性	|hystrix.threadpool.default.queueSizeRejectionThreshold
+实例属性	|hystrix.threadpool.HystrixThreadPoolKey.queueSizeRejectionThreshold
+用法		 |HystrixThreadPoolProperties.Setter().withQueueSizeRejectionThreshold(int value)
+
+#### keepAliveTimeMinutes
+
+此属性设置保持活动时间，以分钟为单位。
+
+这实际上并不使用，因为 *corePoolSize* 和 *maxPoolSize* 在默认实现中设置为相同的值，但是如果您要通过插件([plugin](https://github.com/Netflix/Hystrix/wiki/Plugins))使用自定义实现，那么这将可供您使用。
+
+默认值 	 | 1
+---	  	   |:--
+默认属性	|hystrix.threadpool.default.keepAliveTimeMinutes
+实例属性	|hystrix.threadpool.HystrixThreadPoolKey.keepAliveTimeMinutes
+用法		 |HystrixThreadPoolProperties.Setter().withKeepAliveTimeMinutes(int value)
+
+#### metrics.rollingStats.timeInMilliseconds
+
+此属性设置统计滚动窗口的持续时间（以毫秒为单位）。 这是为线程池保留多长时间。
+
+窗口被分成桶和“卷”这些增量。
+
+默认值 	 | 10000
+---	  	   |:--
+默认属性	|hystrix.threadpool.default.metrics.rollingStats.timeInMilliseconds
+实例属性	|hystrix.threadpool.HystrixThreadPoolKey.metrics.rollingStats.timeInMilliseconds
+用法		 |HystrixThreadPoolProperties.Setter().withMetricsRollingStatisticalWindowInMilliseconds(int value)
+
+#### metrics.rollingStats.numBuckets
+
+此属性设置滚动统计窗口划分的桶数。
+
+**注意：**以下内容必须为true - “metrics.rolling Stats.time In Milliseconds％metrics.rollingStats.numBuckets == 0” - 否则将抛出异常。
+
+换句话说，10000/10是好的，所以是10000/20，但10000/7不是。
+
+默认值 	 | 10
+---	  	   |:--
+默认属性	|hystrix.threadpool.default.metrics.rollingPercentile.numBuckets
+可选值|metrics.rollingStats.timeInMilliseconds的任何值均可。 然而，结果应该是测量数百或数千毫秒的桶。 高容量下的性能未使用桶小于100ms测试。
+实例属性	|hystrix.threadpool.HystrixThreadPoolProperties.metrics.rollingPercentile.numBuckets
+用法		 |HystrixThreadPoolProperties.Setter().withMetricsRollingStatisticalWindowBuckets(int value)
