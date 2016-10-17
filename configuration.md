@@ -1,4 +1,4 @@
-Configuration](https://github.com/Netflix/Hystrix/wiki/Configuration)
+[Configuration](https://github.com/Netflix/Hystrix/wiki/Configuration)
 ===
 ## 内容
 <!-- toc -->
