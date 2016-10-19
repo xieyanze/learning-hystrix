@@ -1,7 +1,7 @@
-配置项
+[配置项](https://github.com/Netflix/Hystrix/wiki/Configuration)
 ===
 
-## 内容
+## 目录
 
 <!-- toc -->
 
@@ -17,50 +17,56 @@ Hystrix使用 [Archaius](https://github.com/Netflix/archaius) 作为配置的默
 
 	如果未设置以下3中的任何一个，则这是默认值。全局默认值在下表中显示为“默认值”。
 
-2. 动态全局默认属性
-您可以使用属性更改全局默认值。全局默认属性名称在下表中显示为“默认属性”。
+1. 动态全局默认属性
 
-3. 从代码配置实例的默认属性
-您可以定义特定于实例的默认值。 例：
+	您可以使用属性更改全局默认值。全局默认属性名称在下表中显示为“默认属性”。
 
-```java
-HystrixCommandProperties.Setter().withExecutionTimeoutInMilliseconds(int value)
-```
+1. 从代码配置实例的默认属性
 
-您将以类似于以下方式将此类命令插入HystrixCommand构造函数：
+	您可以定义特定于实例的默认值。 例：
 
-```java
-public HystrixCommandInstance(int id) {
-    super(Setter.withGroupKey(HystrixCommandGroupKey.Factory.asKey("ExampleGroup"))
-        .andCommandPropertiesDefaults(HystrixCommandProperties.Setter()
-               .withExecutionTimeoutInMilliseconds(500)));
-    this.id = id;
-}
-```
+    ```java
+    HystrixCommandProperties.Setter().withExecutionTimeoutInMilliseconds(int value)
+    ```
 
-有常用的初始值的方便构造函数。 这里有一个例子：
+    您将以类似于以下方式将此类命令插入HystrixCommand构造函数：
 
-```java
-public HystrixCommandInstance(int id) {
-    super(HystrixCommandGroupKey.Factory.asKey("ExampleGroup"), 500);
-    this.id = id;
-}
-```
+    ```java
+    public HystrixCommandInstance(int id) {
+        super(Setter.withGroupKey(HystrixCommandGroupKey.Factory.asKey("ExampleGroup"))
+            .andCommandPropertiesDefaults(HystrixCommandProperties.Setter()
+                   .withExecutionTimeoutInMilliseconds(500)));
+        this.id = id;
+    }
+    ```
 
-4. 动态实例属性
+    有常用的初始值的方便构造函数。 这里有一个例子：
 
-您可以动态设置实例特定值，覆盖前面的三个默认值。动态实例属性名称在下表中显示为“实例属性”。
-例如：
+    ```java
+    public HystrixCommandInstance(int id) {
+        super(HystrixCommandGroupKey.Factory.asKey("ExampleGroup"), 500);
+        this.id = id;
+    }
+    ```
 
-  instance property |  hystrix.command.HystrixCommandKey.execution.isolation.thread.timeoutInMilliseconds
- -----|------
- |
+1. 动态实例属性
+
+    您可以动态设置实例特定值，覆盖前面的三个默认值。动态实例属性名称在下表中显示为“实例属性”。
+
+    例如：
+
+| instance property |  hystrix.command.HystrixCommandKey.execution.isolation.thread.timeoutInMilliseconds|
+|-----|------|
+|	|     |
+
 将属性的Hystrix命令键部分替换为您要定位的HystrixCommand的Hystrix命令Key.name（）值。
 
 例如，如果键被命名为“SubscriberGetAccount”，则属性名称将为
->hystrix.command.SubscriberGetAccount.execution.isolation.thread.timeoutInMilliseconds
+
+> hystrix.command.SubscriberGetAccount.execution.isolation.thread.timeoutInMilliseconds
 
 ## 命令的属性
+
 [查看原文表格](https://github.com/Netflix/Hystrix/wiki/Configuration#command-properties)
 
 ### Execution（执行器）
@@ -81,11 +87,12 @@ public HystrixCommandInstance(int id) {
 在线程中执行的命令具有超出网络超时可提供的延迟的额外保护层。
 
 一般来说，你应该使用信号量隔离（SEMAPHORE）的唯一场景是当调用是如此高的量（每秒百万次，每个实例），单独的线程的开销太高; 这通常仅适用于非网络呼叫。
->Netflix API有40多个命令在40多个线程池中运行，并且只有少数命令不在线程中运行 - 从内存中缓存获取元数据或者是面向线程隔离命令的外观（参见 [“Primary + 辅助与后退“模式](https://xieyanze.gitbooks.io/hystrix-document/content/use.html#主备fallback) 有关的更多信息）。
+> Netflix API有40多个命令在40多个线程池中运行，并且只有少数命令不在线程中运行 - 从内存中缓存获取元数据或者是面向线程隔离命令的外观（参见 [“Primary + 辅助与后退“模式](https://xieyanze.gitbooks.io/hystrix-document/content/use.html#主备fallback) 有关的更多信息）。
 
 ![isolation-options-1280.png](images/isolation-options-640.png)
 
 有关此决策的更多信息，请参阅隔离的[工作原理](https://github.com/Netflix/Hystrix/wiki/How-it-Works#isolation)。
+
 默认值 	 | THREAD
 ---	  	   |:--
 可选值 	 | THREAD, SEMAPHORE
